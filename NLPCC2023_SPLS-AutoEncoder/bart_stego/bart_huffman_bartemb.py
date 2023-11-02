@@ -1,25 +1,19 @@
 import json
-import pickle
 from argparse import ArgumentParser
 from tqdm import tqdm
 import torch
-
-import transformers
 from transformers.models.bart.modeling_bart import BartForConditionalGeneration
 from transformers import BertTokenizer
 import ast
 
 
-def get_index_arr(block):
-    index_arr = [[] for i in range(2 ** block)]
-    return index_arr
-
-def DAE(bit_sequence, covertext, device, model, tokenizer, beam_num, no_repeat ):
+def DAE(bit_sequence, covertext, device, model, tokenizer, beam_num, no_repeat):
     LONG_BORING_TENNIS_ARTICLE = covertext.replace('\n', '')
     model.set_code(code=bit_sequence)
     article_input_ids = \
-    tokenizer.batch_encode_plus([LONG_BORING_TENNIS_ARTICLE], return_tensors='pt', max_length=1024, truncation=True)[
-        'input_ids'].to(device)
+        tokenizer.batch_encode_plus([LONG_BORING_TENNIS_ARTICLE], return_tensors='pt', max_length=1024,
+                                    truncation=True)[
+            'input_ids'].to(device)
     model.set_text(text=article_input_ids[0])
     ids = model.generate(article_input_ids, num_beams=beam_num, length_penalty=1.0,
                          no_repeat_ngram_size=no_repeat, num_return_sequences=beam_num, return_dict_in_generate=True)
@@ -30,21 +24,16 @@ def DAE(bit_sequence, covertext, device, model, tokenizer, beam_num, no_repeat )
     return selected_sectence
 
 
-
-
 def main(args):
-    output_name = './datasets/{}/bart_bpw_{}_theta_{}'.format(args.dataset,args.bpw,args.theta,)
-    model_name=args.pre_model_name
-    index_arr = get_index_arr(args.bpw)
+    output_name = './datasets/{}/bart_bpw_{}_theta_{}'.format(args.dataset, args.bpw, args.theta, )
+    model_name = args.pre_model_name
     device = 'cuda:{}'.format(args.device) if torch.cuda.is_available() else 'cpu'
     tokenizer = BertTokenizer.from_pretrained('model/user_bart/uer_bart_vocab.txt')
     model = BartForConditionalGeneration.from_pretrained(model_name).to(device)
     model.set_bpw(args.bpw)
     model.set_theta(args.theta)
-
     dataset_path = './datasets/{}/plaintext.txt'.format(args.dataset)
     print(dataset_path)
-
     data_p = open(f"{dataset_path}", "r", encoding='utf-8')
     covertexts = data_p.readlines()
     messages = []
@@ -56,18 +45,15 @@ def main(args):
         list_line = ast.literal_eval(line)
         messages.append(list_line)
     stega_info = []
-    bpw_arr=[]
-
-    # for i in tqdm(range(len(messages))):
-    for i in tqdm(range( 4)):
+    bpw_arr = []
+    for i in tqdm(range(4)):
         bit_sequence = messages[i]
         model.set_total()
         covertext = covertexts[i]
-        stega_text = DAE(bit_sequence, covertext, device, model, tokenizer, args.beam_num, args.no_repeat  )
-        total_step ,bit_index=model.get_total()
-        bpw_arr.append(bit_index[0]/total_step[0])
+        stega_text = DAE(bit_sequence, covertext, device, model, tokenizer, args.beam_num, args.no_repeat)
+        total_step, bit_index = model.get_total()
+        bpw_arr.append(bit_index[0] / total_step[0])
         stega_info.append(stega_text)
-
     results = {
         "bpw": bpw_arr,
         "covertexts": stega_info
@@ -75,6 +61,7 @@ def main(args):
     print(output_name)
     with open(output_name, "w", encoding="utf8") as fout:
         json.dump(results, fout, indent=4, sort_keys=True, separators=(',', ': '), ensure_ascii=False)
+
 
 if __name__ == "__main__":
     psr = ArgumentParser()
@@ -90,4 +77,3 @@ if __name__ == "__main__":
     args = psr.parse_args()
     print(args)
     main(args)
-

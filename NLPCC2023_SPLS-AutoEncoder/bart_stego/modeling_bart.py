@@ -1204,6 +1204,7 @@ class BartModel(BartPretrainedModel):
 import sys
 import copy
 
+
 class SelfAttention(nn.Module):
     def __init__(self, hidden_size, num_heads, dropout):
         super(SelfAttention, self).__init__()
@@ -1215,13 +1216,14 @@ class SelfAttention(nn.Module):
 
     def forward(self, inputs):
         # inputs: batch_size x seq_len x hidden_size
-        inputs = inputs.transpose(0, 1) # seq_len x batch_size x hidden_size
+        inputs = inputs.transpose(0, 1)  # seq_len x batch_size x hidden_size
         attn_output, _ = self.attention(inputs, inputs, inputs)
         # attn_output: seq_len x batch_size x hidden_size
         attn_output = self.layer_norm(attn_output + inputs)
         # attn_output: batch_size x seq_len x hidden_size
         attn_output = attn_output.transpose(0, 1)
         return attn_output
+
 
 @add_start_docstrings(
     "The BART Model with a language modeling head. Can be used for summarization.", BART_START_DOCSTRING
@@ -1260,18 +1262,17 @@ class BartForConditionalGeneration(BartPretrainedModel):
         self.index = [0] * beams
         self.start_index = 0
         self.num = 0
-        self.flag=True
+        self.flag = True
 
-    def set_total(self,beams=100):
+    def set_total(self, beams=100):
         self.bpw_total = [0] * beams
 
     def get_total(self):
-        return self.bpw_total,self.index
+        return self.bpw_total, self.index
 
     def set_bpw(self, bpw):
         self.bpw = bpw
-    # def set_index(self):
-    #     self.index_tmp = 0
+
     def set_theta(self, theta):
         self.theta = theta
 
@@ -1296,16 +1297,6 @@ class BartForConditionalGeneration(BartPretrainedModel):
             for index in range(2 ** self.bpw):
                 if index != i:
                     self.mask[i] += self.tt[index][0]
-
-    # def set_mask(self, device,index_arr):
-    #     self.mask= [[] for i in range(2 ** self.bpw)]
-    #     for i in range(2 ** self.bpw):
-    #         self.mask[i] = torch.zeros(21128, dtype=torch.long).to(device)
-    #     for i in range(2 ** self.bpw):
-    #         for tmp in range(2 ** self.bpw):
-    #             if tmp != i:
-    #                 for j in index_arr[tmp]:
-    #                     self.mask[i][j] = self.mask[i][j].to(torch.float) + -1e20
 
     def bits2int(self, bits):
         res = 0
@@ -1432,8 +1423,6 @@ class BartForConditionalGeneration(BartPretrainedModel):
                     # self.flag=False
 
         # cover_emb = self.self_attention(outputs.encoder_last_hidden_state).mean(dim=1)
-
-
 
         masked_lm_loss = None
         if labels is not None:
